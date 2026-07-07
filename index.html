@@ -211,11 +211,11 @@
         </div>
       </div>
       <div class="source">
-        Source&nbsp;: Copernicus Emergency Management Service — EFFIS / ECMWF.
+        Source&nbsp;: Copernicus Emergency Management Service — EFFIS / GWIS / ECMWF.
         Données accessibles sous <a href="https://forest-fire.emergency.copernicus.eu/about-effis/data-license" target="_blank" rel="noopener">licence ouverte Copernicus</a>.
       </div>
       <div class="disclaimer">
-        Prévisions météorologiques du ECMWF à ~8 km de résolution, couvrant 10 jours. L'indice FWI est calculé selon le système canadien de l'Índice-forestier météo.
+        Prévisions météorologiques du ECMWF à ~8 km de résolution, couvrant 10 jours. L'indice FWI est calculé selon le système canadien de l'indice forêt-météo.
       </div>
     </div>
   </div>
@@ -224,9 +224,11 @@
 
 <script>
 /* ============================================================
-   CARTE — Risque d'incendie en Europe (FWI ECMWF via EFFIS WMS)
+   CARTE — Risque d'incendie en Europe (FWI ECMWF via GWIS WMS)
    Couche WMS confirmée : ecmwf.fwi
    Source : https://maps.effis.emergency.copernicus.eu/gwis
+   Projection : EPSG:3857 (par défaut Leaflet) pour se superposer
+   parfaitement au fond OpenStreetMap.
    ============================================================ */
 
 const isTouch = matchMedia('(hover: none)').matches || window.matchMedia('(pointer: coarse)').matches;
@@ -253,7 +255,10 @@ const map = L.map('map', {
 /* Vue centrée sur l'Europe */
 map.setView([48.0, 15.0], 4);
 
-/* Base OpenStreetMap */
+/* Contrôle de zoom en haut à droite */
+L.control.zoom({ position: 'topright' }).addTo(map);
+
+/* Base OpenStreetMap (projection EPSG:3857) */
 L.tileLayer(
   'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
   {
@@ -262,7 +267,11 @@ L.tileLayer(
   }
 ).addTo(map);
 
-/* ---------- Couche WMS FWI Copernicus GWIS ---------- */
+/* ---------- Couche WMS FWI Copernicus GWIS ----------
+   IMPORTANT : PAS de crs:EPSG4326 ici.
+   On laisse Leaflet utiliser sa projection par défaut (EPSG:3857),
+   identique à celle du fond OSM => superposition parfaite
+   et fin des tuiles manquantes.                                   */
 const wmsURL = 'https://maps.effis.emergency.copernicus.eu/gwis';
 const wmsLayer = L.tileLayer.wms(wmsURL, {
   layers: 'ecmwf.fwi',
@@ -271,12 +280,15 @@ const wmsLayer = L.tileLayer.wms(wmsURL, {
   version: '1.1.1',
   opacity: 0.65,
   time: dateToday,
-  tileSize: 1024,
-  crs: L.CRS.EPSG4326,
+  tileSize: 512,
   attribution: 'Source : Copernicus Emergency Management Service — EFFIS / GWIS / ECMWF'
 });
 wmsLayer.addTo(map);
 
+/* Gestion silencieuse des tuiles en erreur (évite les carrés cassés) */
+wmsLayer.on('tileerror', function (e) {
+  if (e && e.tile) { e.tile.style.display = 'none'; }
+});
 
 /* ---------- Mise à jour du sous-titre avec la date du jour ---------- */
 const frMonths = [
@@ -293,6 +305,5 @@ if (isTouch) {
     'Touchez la carte pour explorer les niveaux de risque d\'incendie en Europe.';
 }
 </script>
-<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"8607d2a720d14b038279025b2b5a82e5","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
 </body>
 </html>
