@@ -323,14 +323,20 @@ baseLayer.on('tileerror', function (e) {
 
 /* ---------- Couche FWI en IMAGE UNIQUE (NonTiledLayer) ---------- */
 const wmsURL = 'https://maps.effis.emergency.copernicus.eu/gwis';
+
+// Formater la date pour GWIS : YYYY-MM-DD
 const fwiLayer = L.nonTiledLayer.wms(wmsURL, {
   layers: 'ecmwf.fwi',
   format: 'image/png',
   transparent: true,
   version: '1.1.1',
   opacity: 0.65,
-  time: dateToday,
-  attribution: 'Source : Copernicus Emergency Management Service — EFFIS / GWIS / ECMWF'
+  time: dateToday,  // format YYYY-MM-DD
+  service: 'WMS',
+  request: 'GetMap',
+  styles: '',
+  attribution: 'Source : Copernicus Emergency Management Service — EFFIS / GWIS / ECMWF',
+  interactive: false
 });
 fwiLayer.addTo(map);
 
