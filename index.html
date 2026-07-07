@@ -11,6 +11,9 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
+<!-- Plugin NonTiledLayer : demande UNE seule image WMS au lieu de tuiles -->
+<script src="https://unpkg.com/leaflet.nontiledlayer@1.0.9/dist/NonTiledLayer.js"></script>
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Archivo+Narrow:wght@500;600;700&display=swap" rel="stylesheet">
@@ -225,14 +228,10 @@
 <script>
 /* ============================================================
    CARTE — Risque d'incendie en Europe (FWI ECMWF via GWIS WMS)
-   Couche WMS confirmée : ecmwf.fwi
-   Source : https://maps.effis.emergency.copernicus.eu/gwis
-   Projection : EPSG:3857 (par défaut Leaflet) pour se superposer
-   parfaitement au fond OpenStreetMap.
+   Fond de carte robuste : OSM avec fallback automatique Carto.
    ============================================================ */
 
 const isTouch = matchMedia('(hover: none)').matches || window.matchMedia('(pointer: coarse)').matches;
-const dark    = window.matchMedia('(prefers-color-scheme: dark)').matches;
 
 /* ---------- Calcul de la date du jour (YYYY-MM-DD) ---------- */
 function todayStr() {
@@ -252,45 +251,95 @@ const map = L.map('map', {
   boxZoom: false, keyboard: true, touchZoom: true
 });
 
-/* Vue centrée sur l'Europe */
 map.setView([48.0, 15.0], 4);
 
 /* Contrôle de zoom en haut à droite */
 L.control.zoom({ position: 'topright' }).addTo(map);
 
-/* Base OpenStreetMap (projection EPSG:3857) */
-L.tileLayer(
-  'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+/* ============================================================
+   FOND DE CARTE — configuration robuste
+   ------------------------------------------------------------
+   • Pas de subdomains 'abcd' (le 'd' n'existe pas chez OSM
+     et provoquait des tuiles blanches en diagonale).
+   • On utilise le domaine unique tile.openstreetmap.org qui
+     gère lui-même la répartition en HTTP/2.
+   • updateWhenIdle:false + keepBuffer élevé = tuiles préchargées.
+   • Fallback automatique vers Carto si une tuile OSM échoue.
+   ============================================================ */
+
+// Fond de secours (Carto Voyager — très fiable, style clair)
+const cartoLight = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+const cartoDark  = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+let usingFallback = false;
+let errorCount = 0;
+
+// Couche principale : OpenStreetMap
+const baseLayer = L.tileLayer(
+  'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
   {
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors',
-    subdomains: 'abcd', maxZoom: 19
+    maxZoom: 19,
+    crossOrigin: true,
+    updateWhenIdle: false,   // charge les tuiles pendant le déplacement
+    updateWhenZooming: false,// évite les requêtes inutiles pendant l'animation
+    keepBuffer: 4            // garde plus de tuiles en mémoire autour de la vue
   }
 ).addTo(map);
 
-/* ---------- Couche WMS FWI Copernicus GWIS ----------
-   IMPORTANT : PAS de crs:EPSG4326 ici.
-   On laisse Leaflet utiliser sa projection par défaut (EPSG:3857),
-   identique à celle du fond OSM => superposition parfaite
-   et fin des tuiles manquantes.                                   */
+/* ---------- Gestion des tuiles OSM en échec ---------- */
+baseLayer.on('tileerror', function (e) {
+  // On retente d'abord de recharger la tuile fautive une fois
+  if (e && e.tile && !e.tile.dataset.retried) {
+    e.tile.dataset.retried = '1';
+    const src = e.tile.src;
+    e.tile.src = '';
+    // petit délai avant nouvelle tentative
+    setTimeout(function () { e.tile.src = src; }, 400);
+    return;
+  }
+
+  // Si les échecs se multiplient, on bascule tout sur Carto (plus fiable)
+  errorCount++;
+  if (!usingFallback && errorCount >= 4) {
+    usingFallback = true;
+    console.warn('Tuiles OSM instables → bascule automatique sur Carto.');
+
+    map.removeLayer(baseLayer);
+    L.tileLayer(
+      prefersDark ? cartoDark : cartoLight,
+      {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions" target="_blank">CARTO</a>',
+        subdomains: 'abcd',       // Carto possède bien a,b,c,d
+        maxZoom: 20,
+        crossOrigin: true,
+        updateWhenIdle: false,
+        keepBuffer: 4
+      }
+    ).addTo(map);
+  }
+});
+
+/* ---------- Couche FWI en IMAGE UNIQUE (NonTiledLayer) ---------- */
 const wmsURL = 'https://maps.effis.emergency.copernicus.eu/gwis';
-const wmsLayer = L.tileLayer.wms(wmsURL, {
+const fwiLayer = L.nonTiledLayer.wms(wmsURL, {
   layers: 'ecmwf.fwi',
   format: 'image/png',
   transparent: true,
   version: '1.1.1',
   opacity: 0.65,
   time: dateToday,
-  tileSize: 512,
   attribution: 'Source : Copernicus Emergency Management Service — EFFIS / GWIS / ECMWF'
 });
-wmsLayer.addTo(map);
+fwiLayer.addTo(map);
 
-/* Gestion silencieuse des tuiles en erreur (évite les carrés cassés) */
-wmsLayer.on('tileerror', function (e) {
-  if (e && e.tile) { e.tile.style.display = 'none'; }
+/* ---------- invalidateSize : force le recalcul des dimensions ---------- */
+window.addEventListener('load', function () {
+  setTimeout(function () { map.invalidateSize(); }, 200);
 });
 
-/* ---------- Mise à jour du sous-titre avec la date du jour ---------- */
+/* ---------- Sous-titre avec la date du jour ---------- */
 const frMonths = [
   'janvier','février','mars','avril','mai','juin',
   'juillet','août','septembre','octobre','novembre','décembre'
