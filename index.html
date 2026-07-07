@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light dark">
+
+<title>Carte du risque d'incendie – Europe | FWI Copernicus</title>
+<meta name="description" content="Carte du risque d'incendie en Europe basée sur l'index FWI du Copernicus Emergency Management Service.">
+
+<style>
+  :root{
+    --bg:#f5f6fa;
+    --panel:#ffffff;
+    --title:#2a303c;
+    --subtitle:#383f4e;
+    --muted:#717b8e;
+    --source:rgba(102,110,128,.75);
+    --line:#e4e6ec;
+    --accent:#e05c00;
+    --hint-bg:rgba(224,92,0,.055);
+    --marker-ring:#ffffff;
+    --tip-bg:rgba(42,48,60,.97);
+    --tip-border:rgba(42,48,60,.9);
+    --tip-text:#ffffff;
+    --tip-dim:rgba(255,255,255,.7);
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#001324;
+      --panel:#04182a;
+      --title:#eef2f6;
+      --subtitle:#c3cfdb;
+      --muted:#8ba1b4;
+      --source:rgba(160,180,196,.7);
+      --line:#0e2c44;
+      --accent:#e8853c;
+      --hint-bg:rgba(232,133,60,.08);
+    }
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    background:var(--bg);
+    color:var(--title);
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .wrap{
+    display:flex;flex-direction:column;
+    width:100%;margin:0 auto;
+    padding:14px 0 16px;
+  }
+
+  .content{
+    width:100%;max-width:720px;margin:0 auto;
+    padding:0 16px;
+  }
+
+  /* ---------- En-tête ---------- */
+  .head{margin-bottom:14px;text-align:center}
+  .title{
+    font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    font-weight:700;font-size:19px;line-height:1.3;
+    color:var(--title);letter-spacing:-.01em;
+  }
+  .subtitle{
+    font-weight:400;font-size:13px;line-height:1.5;
+    color:var(--subtitle);margin-top:6px;
+  }
+  .hint{
+    font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    font-size:12px;line-height:1.45;color:var(--muted);
+    background:var(--hint-bg);border-radius:6px;
+    padding:9px 12px;margin-top:11px;
+    display:inline-flex;align-items:center;gap:8px;
+  }
+  .hint svg{flex:0 0 auto;opacity:.75}
+
+  /* ---------- Carte ---------- */
+  .map-shell{position:relative;margin:4px 0}
+  #map{
+    height:62vh;max-height:640px;min-height:380px;
+    width:100%;border-radius:6px;overflow:hidden;
+    background:var(--bg);z-index:1;
+  }
+
+  /* ---------- Légende / source ---------- */
+  .foot{margin-top:13px;text-align:center}
+  .legend{
+    display:inline-flex;align-items:center;gap:7px;
+    font-size:12.5px;color:var(--subtitle);
+  }
+  .legend-label{
+    font-size:11px;color:var(--muted);margin-left:4px;
+  }
+
+  /* Palette FWI - très faible → extrême */
+  .fwi-scale{
+    display:flex;align-items:center;gap:0;
+    font-size:11px;color:var(--subtitle);
+    margin-top:6px;
+  }
+  .fwi-bar{
+    display:flex;height:12px;
+    border-radius:3px;overflow:hidden;
+    margin:0 8px;
+  }
+  .fwi-bar span{
+    width:26px;height:100%;
+  }
+
+  .source{margin-top:8px}
+  .source a{
+    color:var(--accent);
+  }
+  .source a:hover,.source a:focus-visible{opacity:.8}
+
+  @media (max-width:600px){
+    .wrap{padding:12px 14px 14px}
+    .title{font-size:16px}
+    #map{height:66vh}
+  }
+
+  /* ---------- Accessibilité ---------- */
+  .sr-only{
+    position:absolute;width:1px;height:1px;
+    padding:0;margin:-1px;overflow:hidden;
+    clip:rect(0,0,0,0);white-space:nowrap;border:0;
+  }
+  .leaflet-interactive:focus{}
+  .leaflet-interactive:focus-visible{}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="content">
+    <div class="head">
+      <div class="title">🗺️ Carte du risque d'incendie en Europe</div>
+      <div class="subtitle" id="subtitle">Index FWI – chargement en cours…</div>
+      <div class="hint">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <span>Mis à jour quotidiennement. Cliquez sur la carte pour voir la valeur du FWI à cet endroit.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="map-shell" id="shell">
+  </div>
+
+  <div class="content">
+    <div class="foot">
+      <!-- Légende FWI -->
+      <div class="fwi-scale" id="fwi-scale">
+        <span>Très faible</span>
+        <div class="fwi-bar">
+          <span style="background:#a3bdf9"></span>
+          <span style="background:#6e91da"></span>
+          <span style="background:#4c74bc"></span>
+          <span style="background:#f0de45"></span>
+          <span style="background:#f07030"></span>
+          <span style="background:#d63030"></span>
+          <span style="background:#9c3e3e"></span>
+        </div>
+        <span>Extrême</span>
+      </div>
+      <div class="source">
+        Source : <a href="https://forest-fire.emergency.copernicus.eu/" target="_blank" rel="noopener">Copernicus EMS / EFFIS</a>
+        &nbsp;|&nbsp; Données : ECMWF &nbsp;|&nbsp; Index : FWI
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  crossorigin="anonymous" referrerpolicy="no-referrer-when-downgrade">
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  crossorigin="anonymous" referrerpolicy="no-referrer-when-downgrade"></script>
+
+<script>
+/* ---------- Date dynamique ---------- */
+function formatDate(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+const today = formatDate(new Date());
+const yesterday = formatDate(new Date(Date.now() - 86400000));
+
+document.getElementById('subtitle').textContent =
+  `Index FWI – ${yesterday}`;
+
+/* ---------- Carte Leaflet ---------- */
+const map = L.map('map', {
+  zoomControl: true, attributionControl: true,
+  scrollWheelZoom: true,
+  dragging: true, doubleClickZoom: true,
+  boxZoom: false, keyboard: true, touchZoom: true
+});
+
+// Vue centrée sur l'Europe
+map.setView([50.0, 10.0], 4);
+
+// Fond de carte OpenStreetMap
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  subdomains: 'abcd',
+  maxZoom: 19,
+  attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'
+}).addTo(map);
+
+/* ---------- WMS EFFIS – Fire Weather Index ---------- */
+// Couches disponibles sur : https://forest-fire.emergency.copernicus.eu/applications/data-and-services
+const effisWMS = 'https://maps.effis.emergency.copernicus.eu/effis';
+
+const fwiLayer = L.tileLayer.wms(effisWMS, {
+  layers: 'ecmwf.fwi',
+  format: 'image/png',
+  transparent: true,
+  opacity: 0.82,
+  crs: L.CRS.EPSG4326,
+  date: yesterday,          // paramètre de date si supporté par le serveur
+  uppercase: true
+});
+
+fwiLayer.addTo(map);
+
+// Overlay gris si date non disponible
+fwiLayer.on('loading', () => {
+  document.getElementById('subtitle').textContent =
+    `Index FWI – ${yesterday} (chargement…)`;
+});
+fwiLayer.on('load', () => {
+  document.getElementById('subtitle').textContent =
+    `Index FWI – ${yesterday}`;
+});
+
+/* ---------- Info au survol / clic ---------- */
+const info = L.control({ position: 'topright' });
+info.onAdd = function() {
+  this._div = L.DomUtil.create('div', 'fwi-info');
+  this._div.style.cssText =
+    'background:rgba(42,48,60,.92);color:#fff;padding:7px 11px;' +
+    'border-radius:5px;font-size:12px;line-height:20px;' +
+    'pointer-events:none;display:none;white-space:nowrap;' +
+    'font-family:system-ui,sans-serif;';
+  return this._div;
+};
+info.addTo(map);
+
+function describeFWI(val) {
+  if (val == null) return 'Donnée indisponible';
+  if (val < 5.2)  return `FWI ${val.toFixed(1)} – Très faible`;
+  if (val < 11.2) return `FWI ${val.toFixed(1)} – Faible`;
+  if (val < 17.8) return `FWI ${val.toFixed(1)} – Modéré`;
+  if (val < 23.8) return `FWI ${val.toFixed(1)} – Élevé`;
+  if (val < 31.1) return `FWI ${val.toFixed(1)} – Très élevé`;
+  if (val < 38.0) return `FWI ${val.toFixed(1)} – Extrême`;
+  return `FWI ${val.toFixed(1)} – Exceptionnel`;
+}
+
+map.on('click', e => {
+  const url = L.tileLayer.wms(effisWMS, {
+    layers: 'ecmwf.fwi',
+    format: 'image/png',
+    transparent: true,
+    crs: L.CRS.EPSG4326,
+    uppercase: true
+  }).getFeatureInfo(e.latlng, map.getZoom(), { "info_format": "application/json" });
+
+  const popup = L.popup()
+    .setLatLng(e.latlng)
+    .setContent(`<div style="font-size:13px;font-family:system-ui,sans-serif;color:#333">
+      ${describeFWI(null)}<br>
+      <span style="font-size:11px;color:#666">Cliquez sur la carte pour obtenir la valeur FWI</span>
+    </div>`)
+    .openOn(map);
+});
+
+/* ---------- Échelle ---------- */
+L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(map);
+</script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"8607d2a720d14b038279025b2b5a82e5","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
+</html>
