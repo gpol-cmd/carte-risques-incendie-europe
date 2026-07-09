@@ -12,8 +12,6 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
-<!-- Plugin NonTiledLayer : demande UNE seule image WMS au lieu de tuiles -->
-<script src="https://unpkg.com/leaflet.nontiledlayer@1.0.9/dist/NonTiledLayer.js"></script>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -332,22 +330,21 @@ baseLayer.on('tileerror', function (e) {
   }
 });
 
-/* ---------- Couche FWI en IMAGE UNIQUE (NonTiledLayer) ---------- */
-const wmsURL = 'https://maps.effis.emergency.copernicus.eu/gwis';
+/* ---------- Couche FWI en IMAGE FIXE, hébergée dans ce dépôt ----------
+   Remplace l'appel au service WMS Copernicus (vivant, donc pas garanti
+   de conserver indéfiniment les données d'une date figée) par une image
+   PNG statique, récupérée une fois puis hébergée ici. Les "bounds" ci-
+   dessous DOIVENT correspondre exactement au bbox utilisé pour générer
+   l'image (voir instructions de récupération) : lon -25→45, lat 30→72.
+   Pour changer de date : régénérer l'image avec le même bbox, la
+   téléverser sous un nouveau nom, et mettre à jour IMG_FILE ci-dessous. */
+const IMG_FILE = 'fwi_2026-07-09.png';
+const IMG_BOUNDS = [[30, -25], [72, 45]];  // [[lat_min, lon_min], [lat_max, lon_max]]
 
-// Formater la date pour GWIS : YYYY-MM-DD
-const fwiLayer = L.nonTiledLayer.wms(wmsURL, {
-  layers: 'ecmwf.fwi',
-  format: 'image/png',
-  transparent: true,
-  version: '1.1.1',
+const fwiLayer = L.imageOverlay(IMG_FILE, IMG_BOUNDS, {
   opacity: 0.65,
-  time: dateToday,  // format YYYY-MM-DD
-  service: 'WMS',
-  request: 'GetMap',
-  styles: '',
-  attribution: 'Source : Copernicus Emergency Management Service — EFFIS / GWIS / ECMWF',
-  interactive: false
+  interactive: false,
+  attribution: 'Source : Copernicus Emergency Management Service — EFFIS / GWIS / ECMWF (instantané figé)'
 });
 fwiLayer.addTo(map);
 
