@@ -2,6 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
+<script>if(window.parent!==window)document.documentElement.className+=' embedded';</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="color-scheme" content="light dark">
 <title>Indice de danger d'incendie en Europe — carte interactive</title>
@@ -107,6 +108,18 @@
     .leaflet-control-attribution{background:rgba(4,24,42,.72)!important}
   }
   .leaflet-control-attribution a{color:var(--accent)!important}
+  /* En embed iframe : plus de vh (boucle de redimensionnement). La carte
+     prend une hauteur proportionnelle à sa largeur, plafonnée — grande sur
+     ordinateur, compacte sur mobile. La page communique sa hauteur réelle
+     au parent (script en fin de body), qui ajuste l'iframe en conséquence. */
+  html.embedded #map{
+    height:auto;min-height:0;
+    aspect-ratio:3 / 2;
+    max-height:600px;
+  }
+  @media (max-width:600px){
+    html.embedded #map{aspect-ratio:auto;height:420px;max-height:none}
+  }
   .leaflet-control-zoom{
     border:none!important;box-shadow:0 4px 8px rgba(0,0,0,.08),0 2px 2px rgba(0,0,0,.08)!important;
   }
@@ -171,7 +184,7 @@
     <div class="head">
       <div class="title">Indice de danger d'incendie en Europe</div>
       <div class="subtitle" id="subtitle">
-        Prévision quotidienne du Fire Weather Index (FWI) du modèle ECMWF — mise à jour automatique chaque jour.
+        Prévision du Fire Weather Index (FWI) du modèle ECMWF — instantané figé, données Copernicus.
       </div>
       <div class="hint">
         <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a8 8 0 100 16 8 8 0 000-16zm1 12H9v-2h2v2zm0-4H9V6h2v4z"/></svg>
@@ -233,15 +246,13 @@
 
 const isTouch = matchMedia('(hover: none)').matches || window.matchMedia('(pointer: coarse)').matches;
 
-/* ---------- Calcul de la date du jour (YYYY-MM-DD) ---------- */
-function todayStr() {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return y + '-' + m + '-' + day;
-}
-const dateToday = todayStr();
+/* ---------- Date FIGÉE (données Copernicus du jour choisi) ----------
+   Contrairement à la version précédente, cette date n'est plus recalculée
+   automatiquement chaque jour : elle reste celle indiquée ci-dessous tant
+   qu'elle n'est pas changée à la main. Pour rafraîchir la carte sur une
+   nouvelle journée, il suffit de modifier cette seule ligne (format
+   YYYY-MM-DD) puis de re-publier le fichier. */
+const dateToday = '2026-07-09';
 
 /* ---------- Carte ---------- */
 const map = L.map('map', {
@@ -344,21 +355,46 @@ fwiLayer.addTo(map);
 window.addEventListener('load', function () {
   setTimeout(function () { map.invalidateSize(); }, 200);
 });
+window.addEventListener('resize', function () { map.invalidateSize(); });
 
-/* ---------- Sous-titre avec la date du jour ---------- */
+/* ---------- Sous-titre avec la date figée ---------- */
 const frMonths = [
   'janvier','février','mars','avril','mai','juin',
   'juillet','août','septembre','octobre','novembre','décembre'
 ];
-const d = new Date();
-const dateLabel = d.getDate() + ' ' + frMonths[d.getMonth()] + ' ' + d.getFullYear();
+const [dtY, dtM, dtD] = dateToday.split('-').map(Number);
+const dateLabel = dtD + ' ' + frMonths[dtM - 1] + ' ' + dtY;
 document.getElementById('subtitle').textContent =
-  'Prévision quotidienne du Fire Weather Index (FWI) du modèle ECMWF — ' + dateLabel + ' — mise à jour automatique chaque jour.';
+  'Prévision du Fire Weather Index (FWI) du modèle ECMWF — ' + dateLabel + '.';
 
 if (isTouch) {
   document.getElementById('hint-text').textContent =
     'Touchez la carte pour explorer les niveaux de risque d\'incendie en Europe.';
 }
+</script>
+
+<script>
+/* ============================================================
+   Signal de hauteur pour un embed en <iframe> auto-ajustable
+   (article RTBF). Sans effet hors iframe (window.parent === window).
+   Renvoyé plusieurs fois au début pour survivre à une course où le
+   script du CMS n'écoute pas encore lors du premier envoi.
+   ============================================================ */
+(function(){
+  if(window.parent === window) return;
+  function sendHeight(){
+    const h = document.documentElement.scrollHeight;
+    window.parent.postMessage({ type:'fwi-map:height', height:h }, '*');
+  }
+  if('ResizeObserver' in window){
+    new ResizeObserver(sendHeight).observe(document.documentElement);
+  }
+  window.addEventListener('resize', sendHeight);
+  window.addEventListener('load', sendHeight);
+  sendHeight();
+  let n = 0;
+  const retry = setInterval(() => { sendHeight(); if(++n >= 20) clearInterval(retry); }, 300);
+})();
 </script>
 </body>
 </html>
