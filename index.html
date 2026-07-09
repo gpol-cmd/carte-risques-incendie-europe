@@ -98,6 +98,12 @@
     width:100%;border-radius:6px;overflow:hidden;
     background:var(--bg);z-index:1;
   }
+  /* Leaflet bloque par défaut TOUT geste tactile natif sur la carte
+     (touch-action:none), y compris le défilement vertical de la page —
+     indépendamment de notre gestion JS du zoom à deux doigts. On autorise
+     explicitement le défilement vertical natif à un doigt ; le zoom à
+     deux doigts continue d'être géré par Leaflet/notre code JS. */
+  .leaflet-container{touch-action:pan-y!important}
   .leaflet-container{font-family:var(--sans);background:var(--bg)}
   .leaflet-control-attribution{
     font-size:10px;background:rgba(255,255,255,.72)!important;color:var(--muted)!important;
