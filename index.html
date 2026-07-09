@@ -202,10 +202,6 @@
       <div class="subtitle" id="subtitle">
         Prévision du Fire Weather Index (FWI) du modèle ECMWF — instantané figé, données Copernicus.
       </div>
-      <div class="hint">
-        <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a8 8 0 100 16 8 8 0 000-16zm1 12H9v-2h2v2zm0-4H9V6h2v4z"/></svg>
-        <span id="hint-text">Données Copernicus Emergency Management Service — licence ouverte.</span>
-      </div>
     </div>
   </div>
 
@@ -244,11 +240,9 @@
         </div>
       </div>
       <div class="source">
-        Source&nbsp;: Copernicus Emergency Management Service — EFFIS / GWIS / ECMWF.
-        Données accessibles sous <a href="https://forest-fire.emergency.copernicus.eu/about-effis/data-license" target="_blank" rel="noopener">licence ouverte Copernicus</a>.
-      </div>
-      <div class="disclaimer">
-        Prévisions météorologiques du ECMWF à ~8 km de résolution, couvrant 10 jours. L'indice FWI est calculé selon le système canadien de l'indice forêt-météo.
+        &copy; Union europ&eacute;enne, 2026. Source&nbsp;: EFFIS &mdash; Copernicus Emergency Management Service (JRC), mod&egrave;le ECMWF.
+        Donn&eacute;es sous licence <a href="https://creativecommons.org/licenses/by/4.0/deed.fr" target="_blank" rel="noopener">Creative Commons CC BY 4.0</a>,
+        modifi&eacute;es (reprojection cartographique, instantan&eacute; fig&eacute; au 10 juillet 2026).
       </div>
     </div>
   </div>
@@ -269,7 +263,7 @@ const isTouch = matchMedia('(hover: none)').matches || window.matchMedia('(point
    qu'elle n'est pas changée à la main. Pour rafraîchir la carte sur une
    nouvelle journée, il suffit de modifier cette seule ligne (format
    YYYY-MM-DD) puis de re-publier le fichier. */
-const dateToday = '2026-07-09';
+const dateToday = '2026-07-10';
 
 /* ---------- Carte ---------- */
 /* Emprise Europe = les mêmes bornes géographiques que l'image FWI
@@ -424,13 +418,13 @@ baseLayer.on('tileerror', function (e) {
    l'image (voir instructions de récupération) : lon -25→45, lat 30→72.
    Pour changer de date : régénérer l'image avec le même bbox, la
    téléverser sous un nouveau nom, et mettre à jour IMG_FILE ci-dessous. */
-const IMG_FILE = 'fwi_2026-07-09.png';
+const IMG_FILE = 'fwi_2026-07-10.png';
 const IMG_BOUNDS = [[30, -25], [72, 45]];  // [[lat_min, lon_min], [lat_max, lon_max]]
 
 const fwiLayer = L.imageOverlay(IMG_FILE, IMG_BOUNDS, {
   opacity: 0.65,
   interactive: false,
-  attribution: 'Source : Copernicus Emergency Management Service — EFFIS / GWIS / ECMWF (instantané figé)'
+  attribution: '&copy; UE, 2026 &mdash; EFFIS/Copernicus (JRC), CC BY 4.0, modifi&eacute;'
 });
 fwiLayer.addTo(map);
 
@@ -449,11 +443,6 @@ const [dtY, dtM, dtD] = dateToday.split('-').map(Number);
 const dateLabel = dtD + ' ' + frMonths[dtM - 1] + ' ' + dtY;
 document.getElementById('subtitle').textContent =
   'Prévision du Fire Weather Index (FWI) du modèle ECMWF — ' + dateLabel + '.';
-
-if (isTouch) {
-  document.getElementById('hint-text').textContent =
-    'Touchez la carte pour explorer les niveaux de risque d\'incendie en Europe.';
-}
 </script>
 
 <script>
