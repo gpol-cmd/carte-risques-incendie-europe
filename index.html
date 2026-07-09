@@ -127,6 +127,18 @@
   }
   .leaflet-control-zoom a:hover{background:#e8eaee!important}
 
+  .zoom-hint{
+    position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);
+    background:#ffffff;color:#1c2126;
+    padding:13px 24px;border-radius:26px;
+    font-family:var(--sans);font-size:15px;font-weight:700;text-align:center;
+    box-shadow:rgba(0,0,0,.18) 0 6px 16px 2px, rgba(0,0,0,.08) 0 2px 4px;
+    opacity:0;pointer-events:none;transition:opacity .2s ease;z-index:1000;
+    max-width:82%;
+  }
+  .zoom-hint.show{opacity:1}
+  @media (max-width:600px){.zoom-hint{font-size:13.5px;padding:11px 18px}}
+
   /* ---------- Légende / source ---------- */
   .foot{margin-top:13px;text-align:center}
   .legend{
@@ -193,6 +205,7 @@
 
   <div class="map-shell" id="shell">
     <div id="map" role="application" aria-label="Carte interactive de l'indice de danger d'incendie en Europe"></div>
+    <div class="zoom-hint" id="zoom-hint" aria-hidden="true">Maintenez Ctrl (&#8984; sur Mac) + molette pour zoomer</div>
   </div>
 
   <div class="content">
@@ -253,17 +266,51 @@ const isTouch = matchMedia('(hover: none)').matches || window.matchMedia('(point
 const dateToday = '2026-07-09';
 
 /* ---------- Carte ---------- */
+/* Emprise Europe = les mêmes bornes géographiques que l'image FWI
+   (voir IMG_BOUNDS plus bas) : on ne peut pas faire glisser la carte
+   au-delà, ni dézoomer sur du vide sans donnée. */
+const EUROPE_BOUNDS = [[28, -28], [74, 48]];  // légèrement plus large que l'image, pour une marge de confort
+
 const map = L.map('map', {
   zoomControl: false, attributionControl: true,
-  scrollWheelZoom: true,
+  scrollWheelZoom: true,     /* filtré : molette seule = scroll de la page ; Ctrl+molette = zoom, voir plus bas */
   dragging: true, doubleClickZoom: true,
-  boxZoom: false, keyboard: true, touchZoom: true
+  boxZoom: false, keyboard: true, touchZoom: true,
+  maxBounds: EUROPE_BOUNDS,
+  maxBoundsViscosity: 1.0,    /* la carte "rebondit" fermement sur la limite plutôt que de la dépasser */
+  minZoom: 4
 });
 
 map.setView([48.0, 15.0], 4);
+map.fitBounds(EUROPE_BOUNDS);
 
 /* Contrôle de zoom en haut à droite */
 L.control.zoom({ position: 'topright' }).addTo(map);
+
+/* ---------- Molette : Ctrl (ou Cmd sur Mac) requis pour zoomer ----------
+   Sans ça, un simple scroll de l'article qui traverse la carte s'y trouve
+   piégé en zoom au lieu de continuer à faire défiler la page — piège
+   classique pour les utilisateurs qui ne savent pas qu'il faut sortir la
+   souris de la carte. On intercepte l'événement en phase de capture,
+   AVANT que Leaflet ne le reçoive, pour décider s'il doit zoomer ou non. */
+const mapEl = map.getContainer();
+let zoomHintTimer;
+function showZoomHint(){
+  const el = document.getElementById('zoom-hint');
+  if(!el) return;
+  el.classList.add('show');
+  clearTimeout(zoomHintTimer);
+  zoomHintTimer = setTimeout(() => el.classList.remove('show'), 900);
+}
+mapEl.addEventListener('wheel', function(e){
+  if(e.ctrlKey || e.metaKey){
+    e.preventDefault();  // empêche aussi le zoom de la PAGE entière (raccourci navigateur natif)
+    return;               // laisse Leaflet zoomer normalement
+  }
+  e.stopImmediatePropagation();  // empêche Leaflet de zoomer sur cet événement
+  showZoomHint();
+  // pas de preventDefault ici : le scroll de la page continue normalement
+}, { capture: true, passive: false });
 
 /* ============================================================
    FOND DE CARTE — configuration robuste
