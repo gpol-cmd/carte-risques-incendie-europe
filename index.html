@@ -281,8 +281,12 @@ const map = L.map('map', {
   minZoom: 4
 });
 
-map.setView([48.0, 15.0], 4);
-map.fitBounds(EUROPE_BOUNDS);
+/* Centrage manuel plutôt que fitBounds(EUROPE_BOUNDS) : la projection
+   Mercator étire visuellement le nord (la Scandinavie paraît bien plus
+   grande qu'elle ne l'est), donc centrer sur la latitude géométrique
+   moyenne (51°) pousse le centre VISUEL bien plus au nord que prévu et
+   sort l'Espagne/le Portugal du cadre. On centre donc plus bas. */
+map.setView([44.0, 10.0], 4);
 
 /* Contrôle de zoom en haut à droite */
 L.control.zoom({ position: 'topright' }).addTo(map);
