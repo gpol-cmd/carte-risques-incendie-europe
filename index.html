@@ -198,9 +198,9 @@
 
   <div class="content">
     <div class="head">
-      <div class="title">Indice de danger d'incendie en Europe</div>
+      <div class="title">Indice de danger d'incendie en Europe le 10 juillet 2026</div>
       <div class="subtitle" id="subtitle">
-        Prévision du Fire Weather Index (FWI) du modèle ECMWF — instantané figé, données Copernicus.
+        Prévision du Fire Weather Index (FWI) du modèle ECMWF le 9 juillet à 16:41.
       </div>
     </div>
   </div>
@@ -434,15 +434,9 @@ window.addEventListener('load', function () {
 });
 window.addEventListener('resize', function () { map.invalidateSize(); });
 
-/* ---------- Sous-titre avec la date figée ---------- */
-const frMonths = [
-  'janvier','février','mars','avril','mai','juin',
-  'juillet','août','septembre','octobre','novembre','décembre'
-];
-const [dtY, dtM, dtD] = dateToday.split('-').map(Number);
-const dateLabel = dtD + ' ' + frMonths[dtM - 1] + ' ' + dtY;
+/* ---------- Sous-titre (texte fixe) ---------- */
 document.getElementById('subtitle').textContent =
-  'Prévision du Fire Weather Index (FWI) du modèle ECMWF — ' + dateLabel + '.';
+  'Prévision du Fire Weather Index (FWI) du modèle ECMWF le 9 juillet à 16:41.';
 </script>
 
 <script>
