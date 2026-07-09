@@ -205,7 +205,7 @@
 
   <div class="map-shell" id="shell">
     <div id="map" role="application" aria-label="Carte interactive de l'indice de danger d'incendie en Europe"></div>
-    <div class="zoom-hint" id="zoom-hint" aria-hidden="true">Maintenez Ctrl (&#8984; sur Mac) + molette pour zoomer</div>
+    <div class="zoom-hint" id="zoom-hint" aria-hidden="true"></div>
   </div>
 
   <div class="content">
@@ -291,30 +291,59 @@ map.setView([44.0, 10.0], 4);
 /* Contrôle de zoom en haut à droite */
 L.control.zoom({ position: 'topright' }).addTo(map);
 
-/* ---------- Molette : Ctrl (ou Cmd sur Mac) requis pour zoomer ----------
-   Sans ça, un simple scroll de l'article qui traverse la carte s'y trouve
-   piégé en zoom au lieu de continuer à faire défiler la page — piège
-   classique pour les utilisateurs qui ne savent pas qu'il faut sortir la
-   souris de la carte. On intercepte l'événement en phase de capture,
-   AVANT que Leaflet ne le reçoive, pour décider s'il doit zoomer ou non. */
+/* ---------- Molette : Ctrl (ou Cmd sur Mac) requis pour zoomer / Tactile :
+   deux doigts requis pour zoomer ou déplacer la carte ----------
+   Sans ça, un simple scroll de l'article (souris) ou un balayage à un
+   doigt (tactile) qui traverse la carte s'y trouve piégé en zoom/déplacement
+   au lieu de continuer à faire défiler la page. On intercepte les
+   événements en phase de capture, AVANT que Leaflet ne les reçoive, pour
+   décider s'ils doivent lui être transmis ou laissés au défilement natif. */
 const mapEl = map.getContainer();
+const HINT_DESKTOP = 'Maintenez Ctrl (\u2318 sur Mac) + molette pour zoomer';
+const HINT_TOUCH = 'Utilisez deux doigts pour zoomer et déplacer la carte';
 let zoomHintTimer;
-function showZoomHint(){
+function showZoomHint(text){
   const el = document.getElementById('zoom-hint');
   if(!el) return;
+  el.textContent = text;
   el.classList.add('show');
   clearTimeout(zoomHintTimer);
   zoomHintTimer = setTimeout(() => el.classList.remove('show'), 900);
 }
+
+/* Molette */
 mapEl.addEventListener('wheel', function(e){
   if(e.ctrlKey || e.metaKey){
     e.preventDefault();  // empêche aussi le zoom de la PAGE entière (raccourci navigateur natif)
     return;               // laisse Leaflet zoomer normalement
   }
   e.stopImmediatePropagation();  // empêche Leaflet de zoomer sur cet événement
-  showZoomHint();
+  showZoomHint(HINT_DESKTOP);
   // pas de preventDefault ici : le scroll de la page continue normalement
 }, { capture: true, passive: false });
+
+/* Tactile : un seul doigt = défilement natif de la page ; le message
+   n'apparaît que sur un vrai glissé (pas sur un simple tap), en suivant
+   le déplacement réel du doigt depuis son point de départ. */
+let touchStartX = 0, touchStartY = 0, touchHintShown = false;
+mapEl.addEventListener('touchstart', function(e){
+  if(e.touches.length >= 2){ touchHintShown = false; return; }  // laisse Leaflet gérer le pincement
+  touchStartX = e.touches[0].clientX;
+  touchStartY = e.touches[0].clientY;
+  touchHintShown = false;
+  e.stopImmediatePropagation();  // empêche Leaflet de capter ce doigt unique
+}, { capture: true, passive: true });
+
+mapEl.addEventListener('touchmove', function(e){
+  if(e.touches.length >= 2) return;  // laisse Leaflet gérer le pincement
+  e.stopImmediatePropagation();
+  if(touchHintShown) return;
+  const t = e.touches[0];
+  if(Math.hypot(t.clientX - touchStartX, t.clientY - touchStartY) > 10){
+    showZoomHint(HINT_TOUCH);
+    touchHintShown = true;
+  }
+}, { capture: true, passive: true });
 
 /* ============================================================
    FOND DE CARTE — configuration robuste
