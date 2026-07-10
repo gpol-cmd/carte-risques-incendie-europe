@@ -78,6 +78,12 @@
     font-weight:700;font-size:19px;line-height:1.3;
     color:var(--title);letter-spacing:-.01em;
   }
+  .title-date{
+    font-family:var(--sans);
+    font-weight:700;font-size:19px;line-height:1.3;
+    color:var(--accent);letter-spacing:-.01em;
+    margin-top:2px;
+  }
   .subtitle{
     font-weight:400;font-size:13px;line-height:1.5;
     color:var(--subtitle);margin-top:6px;
@@ -177,6 +183,7 @@
   @media (max-width:600px){
     .wrap{padding:12px 14px 14px}
     .title{font-size:16px}
+    .title-date{font-size:16px}
     #map{height:66vh}
     .legend{font-size:10.5px;gap:4px}
     .legend-swatch{width:14px;height:10px}
@@ -198,9 +205,10 @@
 
   <div class="content">
     <div class="head">
-      <div class="title">Indice de danger d'incendie en Europe le 10 juillet 2026</div>
+      <div class="title">Indice de danger d'incendie en Europe pr&eacute;vu pour le</div>
+      <div class="title-date">10 juillet 2026</div>
       <div class="subtitle" id="subtitle">
-        Prévision du Fire Weather Index (FWI) du modèle ECMWF le 9 juillet à 16:41.
+        Pr&eacute;vision du Fire Weather Index (FWI) du mod&egrave;le ECMWF. Mis &agrave; jour le 10 juillet &agrave; 10:44.
       </div>
     </div>
   </div>
@@ -240,9 +248,7 @@
         </div>
       </div>
       <div class="source">
-        &copy; Union europ&eacute;enne, 2026. Source&nbsp;: EFFIS &mdash; Copernicus Emergency Management Service (JRC), mod&egrave;le ECMWF.
-        Donn&eacute;es sous licence <a href="https://creativecommons.org/licenses/by/4.0/deed.fr" target="_blank" rel="noopener">Creative Commons CC BY 4.0</a>,
-        modifi&eacute;es (reprojection cartographique).
+        Source&nbsp;: <a href="https://forest-fire.emergency.copernicus.eu/apps/effis_current_situation/" target="_blank" rel="noopener">EFFIS &mdash; Current Situation Viewer (Copernicus)</a>.
       </div>
     </div>
   </div>
@@ -424,7 +430,7 @@ const IMG_BOUNDS = [[30, -25], [72, 45]];  // [[lat_min, lon_min], [lat_max, lon
 const fwiLayer = L.imageOverlay(IMG_FILE, IMG_BOUNDS, {
   opacity: 0.65,
   interactive: false,
-  attribution: '&copy; UE, 2026 &mdash; EFFIS/Copernicus (JRC), CC BY 4.0, modifi&eacute;'
+  attribution: '&copy; UE, 2026 &mdash; EFFIS/Copernicus (JRC), <a href="https://creativecommons.org/licenses/by/4.0/deed.fr" target="_blank" rel="noopener">CC BY 4.0</a>, modifi&eacute;'
 });
 fwiLayer.addTo(map);
 
@@ -436,7 +442,7 @@ window.addEventListener('resize', function () { map.invalidateSize(); });
 
 /* ---------- Sous-titre (texte fixe) ---------- */
 document.getElementById('subtitle').textContent =
-  'Prévision du Fire Weather Index (FWI) du modèle ECMWF le 9 juillet à 16:41.';
+  'Prévision du Fire Weather Index (FWI) du modèle ECMWF. Mis à jour le 10 juillet à 10:44.';
 </script>
 
 <script>
